@@ -10,7 +10,7 @@ ws['bg'] = '#AC99F2'
 output_frame = Frame(ws)
 output_frame.pack()
 
-#scrollbar
+#Scrollbar
 scroll = Scrollbar(output_frame)
 scroll.pack(side=RIGHT, fill=Y)
 
