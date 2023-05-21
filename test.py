@@ -12,6 +12,7 @@ from PIL import Image
 import time
 from datetime import datetime
 from scapy.all import Raw
+from io import StringIO
 
 was_stopped = False
 
@@ -117,10 +118,11 @@ def on_treeview_doubleclick(event):
     selected_item = table.focus()
     packet_id = table.item(selected_item)["values"][0]
     packet = table.item(selected_item)["values"][6]
-    # print(packet)
+    global x
     x = list[packet_id-1]
-    packet_info = str(packet)
-    tk.messagebox.showinfo(f"Packet Info (ID: {packet_id})", x.show())
+    packet_info = str(x.show(dump=True))
+    tk.messagebox.showinfo(f"Packet Info (ID: {packet_id})", packet_info)
+
 
 
 

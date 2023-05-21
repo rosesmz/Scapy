@@ -9,10 +9,11 @@ from tkinter import *
 import tkinter.ttk as ttk
 import customtkinter as ctk
 from PIL import Image
-import time
 from datetime import datetime
 
 was_stopped = False
+
+list = []
 
 class Sniffer:
     def __init__(self, output_box):
@@ -29,7 +30,13 @@ class Sniffer:
             self.sniffer = AsyncSniffer(filter='tcp port 53 or udp port 53', prn=add_packet)
         elif filter == '':
             tk.messagebox.showinfo("Alert", "No filter was specified!\nRunning all protocols.")
-            self.sniffer = AsyncSniffer(filter='', prn=add_packet)            
+            self.sniffer = AsyncSniffer(filter='', prn=add_packet)
+        elif filter.startswith("src:") or filter.startswith("dst"):
+            input = filter.split(":")
+            self.sniffer = AsyncSniffer(filter=f'{input[0]} host {input[1]}', prn=add_packet)
+        elif filter.startswith("port:"):
+            port = filter.split(":")[1]
+            self.sniffer = AsyncSniffer(filter=f'port {port}', prn=add_packet)
         elif filter not in protocols:
             tk.messagebox.showerror("Error", "Specified filter doesn't exist!\nRunning all protocols.")
             self.sniffer = AsyncSniffer(filter='', prn=add_packet)
@@ -84,6 +91,7 @@ def add_packet(packet):
 
     global packet_number, start_time, execution_time, was_stopped
     end_time = datetime.now()
+    list.append(packet)
 
     if was_stopped:
         time_diff_converted = 0.0
@@ -112,55 +120,15 @@ def add_packet(packet):
 def on_treeview_doubleclick(event):
     selected_item = table.focus()
     packet_id = table.item(selected_item)["values"][0]
-    packet = table.item(selected_item)["values"][6]
-    
-    tk.messagebox.showinfo(f"Packet Info (ID: {packet_id})", packet.show())
-
-
-
-# def packet_sniff():
-#     filter = getinput()
-#     sniffer = AsyncSniffer(filter=filter, prn= lambda packet: output.insert(END, packet.summary() + "\n"))
-#     sniffer.start()
-
-#     output.bind("<Control - c>", lambda event: sniffer.stop())
-
-def packet_callback(packet):
-    print(packet.summary())
-    return packet.summary()
+    global x
+    x = list[packet_id-1]
+    packet_info = str(x.show(dump=True))
+    tk.messagebox.showinfo(f"Packet Info (ID: {packet_id})", packet_info)
     
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-
 if __name__ == '__main__':
-    # main()
-    # interfaces = get_if_list()
-    # s = threading.Thread(target=packet_sniff)
-    # s.start()
-
-    # style = ttk.Style()
-    
-    # style.theme_use("default")
-
-    # style.configure("Treeview",
-    #                 background="#2a2d2e",
-    #                 foreground="white",
-    #                 rowheight=25,
-    #                 fieldbackground="#343638",
-    #                 bordercolor="#343638",
-    #                 borderwidth=0)
-    
-    # style.map('Treeview', background=[('selected', '#22559b')])
-
-    # style.configure("Treeview.Heading",
-    #                 background="#565b5e",
-    #                 foreground="white",
-    #                 relief="flat")
-    
-    # style.map("Treeview.Heading",
-    #             background=[('active', '#3484F0')])
-
     root = ctk.CTk()
     root.title("Packet Sniffer")
     root.iconbitmap(r"Images\nose.ico")
@@ -210,21 +178,21 @@ if __name__ == '__main__':
     # def create_table():
     global table
 
-    y_scroll = Scrollbar(output_frame)
-    y_scroll.pack(side=RIGHT, fill=Y)
+    # y_scroll = Scrollbar(output_frame)
+    # y_scroll.pack(side=RIGHT, fill=Y)
 
-    x_scroll = Scrollbar(output_frame, orient='horizontal')
-    x_scroll.pack(side= BOTTOM,fill=X)
+    # x_scroll = Scrollbar(output_frame, orient='horizontal')
+    # x_scroll.pack(side= BOTTOM,fill=X)
 
-    table = ttk.Treeview(output_frame, yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+    table = ttk.Treeview(output_frame)
  
-    y_scroll.config(command=table.yview)
-    x_scroll.config(command=table.xview)
+    # y_scroll.config(command=table.yview)
+    # x_scroll.config(command=table.xview)
 
     table = ttk.Treeview(output_frame)
     table['columns'] = ('packet_id', 'packet_time', 'packet_source', 'packet_destination', 'packet_protocol', 'packet_length','packet_info')
 
-    table.column("#0", width=0, minwidth=25)
+    table.column("#0", width=0, minwidth=25, stretch=NO)
     table.column("packet_id",anchor=CENTER, width=80)
     table.column("packet_time",anchor=CENTER,width=80)
     table.column("packet_source",anchor=CENTER,width=80)
@@ -245,20 +213,20 @@ if __name__ == '__main__':
     table.pack()
     table.bind("<Double-Button-1>", on_treeview_doubleclick)
 
-    output = Text(output_frame, height=20, width=85, wrap=WORD, bd=0, bg="#2c2c2c", fg="silver", font=("Arial", 10))
-    output.pack(padx=10, pady=10)
+    # output = Text(output_frame, height=20, width=85, wrap=WORD, bd=0, bg="#2c2c2c", fg="silver", font=("Arial", 10))
+    # output.pack(padx=10, pady=10)
 
-    main_sniffer = Sniffer(output_box=output)
+    main_sniffer = Sniffer(output_box=output_frame)
 
-    under_frame = ctk.CTkFrame(root, corner_radius=10)
-    under_frame.pack(pady=10)
+    # under_frame = ctk.CTkFrame(root, corner_radius=10)
+    # under_frame.pack(pady=10)
 
     # interfaces_list = show_interfaces()
-    interfaces = ctk.CTkOptionMenu(under_frame, values=["Option 1", "Option 2", "Option 3"])
-    interfaces.pack(padx=10, pady=10)
-    interfaces.set("Choose an interface")
+    # interfaces = ctk.CTkOptionMenu(under_frame, values=["Option 1", "Option 2", "Option 3"])
+    # interfaces.pack(padx=10, pady=10)
+    # interfaces.set("Choose an interface")
 
-    map_button = ctk.CTkButton(under_frame, text="Open Map")
-    map_button.pack(pady=10)
+    # map_button = ctk.CTkButton(under_frame, text="Open Map")
+    # map_button.pack(pady=10)
 
     root.mainloop()
