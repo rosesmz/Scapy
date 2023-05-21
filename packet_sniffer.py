@@ -24,14 +24,17 @@ class Sniffer:
         protocols = ['tcp','udp','http','icmp','arp','dns']
         filter = getinput().lower()
         if filter == 'http':
-            self.sniffer = AsyncSniffer(filter='tcp port 80', prn= add_packet)
+            self.sniffer = AsyncSniffer(filter='tcp port 80', prn=add_packet)
         elif filter == 'dns':
-            self.sniffer = AsyncSniffer(filter='tcp port 53 or udp port 53', prn= add_packet)
+            self.sniffer = AsyncSniffer(filter='tcp port 53 or udp port 53', prn=add_packet)
+        elif filter == '':
+            tk.messagebox.showinfo("Alert", "No filter was specified!\nRunning all protocols.")
+            self.sniffer = AsyncSniffer(filter='', prn=add_packet)            
         elif filter not in protocols:
-            msg = tk.messagebox.showerror("Error", "Specified filter doesn't exist!\nRunning all protocols.")
-            self.sniffer = AsyncSniffer(filter='', prn= add_packet)
+            tk.messagebox.showerror("Error", "Specified filter doesn't exist!\nRunning all protocols.")
+            self.sniffer = AsyncSniffer(filter='', prn=add_packet)
         else:
-            self.sniffer = AsyncSniffer(filter=filter, prn= add_packet)
+            self.sniffer = AsyncSniffer(filter=filter, prn=add_packet)
 
     def start(self):
         global start_time
@@ -105,6 +108,15 @@ def add_packet(packet):
         
     packet_number +=1
     start_time = datetime.now()
+
+def on_treeview_doubleclick(event):
+    selected_item = table.focus()
+    packet_id = table.item(selected_item)["values"][0]
+    packet = table.item(selected_item)["values"][6]
+    
+    tk.messagebox.showinfo(f"Packet Info (ID: {packet_id})", packet.show())
+
+
 
 # def packet_sniff():
 #     filter = getinput()
@@ -198,16 +210,16 @@ if __name__ == '__main__':
     # def create_table():
     global table
 
-    # y_scroll = Scrollbar(output_frame)
-    # y_scroll.pack(side=RIGHT, fill=Y)
+    y_scroll = Scrollbar(output_frame)
+    y_scroll.pack(side=RIGHT, fill=Y)
 
-    # x_scroll = Scrollbar(output_frame, orient='horizontal')
-    # x_scroll.pack(side= BOTTOM,fill=X)
+    x_scroll = Scrollbar(output_frame, orient='horizontal')
+    x_scroll.pack(side= BOTTOM,fill=X)
 
-    table = ttk.Treeview(output_frame)
+    table = ttk.Treeview(output_frame, yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
  
-    # y_scroll.config(command=table.yview)
-    # x_scroll.config(command=table.xview)
+    y_scroll.config(command=table.yview)
+    x_scroll.config(command=table.xview)
 
     table = ttk.Treeview(output_frame)
     table['columns'] = ('packet_id', 'packet_time', 'packet_source', 'packet_destination', 'packet_protocol', 'packet_length','packet_info')
@@ -231,6 +243,7 @@ if __name__ == '__main__':
     table.heading("packet_info",text="Packet",anchor=CENTER)
 
     table.pack()
+    table.bind("<Double-Button-1>", on_treeview_doubleclick)
 
     output = Text(output_frame, height=20, width=85, wrap=WORD, bd=0, bg="#2c2c2c", fg="silver", font=("Arial", 10))
     output.pack(padx=10, pady=10)
