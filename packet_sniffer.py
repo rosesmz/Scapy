@@ -10,6 +10,8 @@ import tkinter.ttk as ttk
 import customtkinter as ctk
 from PIL import Image
 from datetime import datetime
+import pickle
+import socket
 
 was_stopped = False
 
@@ -31,10 +33,10 @@ class Sniffer:
         elif filter == '':
             tk.messagebox.showinfo("Alert", "No filter was specified!\nRunning all protocols.")
             self.sniffer = AsyncSniffer(filter='', prn=add_packet)
-        elif filter.startswith("src:") or filter.startswith("dst"):
+        elif filter.startswith("src") or filter.startswith("dst"):
             input = filter.split(":")
             self.sniffer = AsyncSniffer(filter=f'{input[0]} host {input[1]}', prn=add_packet)
-        elif filter.startswith("port:"):
+        elif filter.startswith("port"):
             port = filter.split(":")[1]
             self.sniffer = AsyncSniffer(filter=f'port {port}', prn=add_packet)
         elif filter not in protocols:
@@ -101,19 +103,26 @@ def add_packet(packet):
         time_diff_converted = time_diff.total_seconds()
     execution_time += time_diff_converted
 
-    if HTTPRequest in packet or HTTPResponse in packet:
-        table.insert(parent='',index='end',iid=packet_number,text='',
-        values=(packet_number, round(execution_time, 6), packet[IP].src, packet[IP].dst, 'HTTP', len(packet), packet.summary()))
-    elif DNS in packet:
-        table.insert(parent='',index='end',iid=packet_number,text='',
-        values=(packet_number, round(execution_time, 6), packet[IP].src, packet[IP].dst, 'DNS', len(packet), packet.summary()))
-    elif ARP in packet:
-        table.insert(parent='',index='end',iid=packet_number,text='',
-        values=(packet_number, round(execution_time, 6), packet[ARP].hwsrc, packet[ARP].hwdst, 'ARP', len(packet), packet.summary()))        
-    elif IP in packet:    
-        table.insert(parent='',index='end',iid=packet_number,text='',
-        values=(packet_number, round(execution_time, 6), packet[IP].src, packet[IP].dst, get_protocol(packet), len(packet), packet.summary()))
+    values = ()
+    try:
+        if HTTPRequest in packet or HTTPResponse in packet:
+            values=(packet_number, round(execution_time, 6), packet[IP].src, packet[IP].dst, 'HTTP', len(packet), packet.summary())
+        elif DNS in packet:
+            values=(packet_number, round(execution_time, 6), packet[IP].src, packet[IP].dst, 'DNS', len(packet), packet.summary())
+        elif ARP in packet:
+            values=(packet_number, round(execution_time, 6), packet[ARP].hwsrc, packet[ARP].hwdst, 'ARP', len(packet), packet.summary())     
+        elif IP in packet:    
+            values=(packet_number, round(execution_time, 6), packet[IP].src, packet[IP].dst, get_protocol(packet), len(packet), packet.summary())
+    except:
+        print("An exception occurred")
+
+    if (values):
+        # Send packet values to server
+        serialized_data = pickle.dumps(values)
+        client_socket.sendall(serialized_data)
         
+        table.insert('',0,iid=packet_number,text='', values=values)
+
     packet_number +=1
     start_time = datetime.now()
 
@@ -127,6 +136,29 @@ def on_treeview_doubleclick(event):
     
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
+
+def run_client():
+    host = 'localhost'
+    port = 12345
+
+    global client_socket
+    # Create a socket object
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    # Connect to the server
+    client_socket.connect((host, port))
+    print('Connected to server:', host, port)
+
+    while True:
+        # Send data to the server
+        message = input("Enter a message (or 'quit' to exit): ")
+        client_socket.send(message.encode('utf-8'))
+
+        if message == 'quit':
+            break
+
+    # Close the connection
+    client_socket.close()
 
 if __name__ == '__main__':
     root = ctk.CTk()
@@ -192,7 +224,7 @@ if __name__ == '__main__':
     table = ttk.Treeview(output_frame)
     table['columns'] = ('packet_id', 'packet_time', 'packet_source', 'packet_destination', 'packet_protocol', 'packet_length','packet_info')
 
-    table.column("#0", width=0, minwidth=25, stretch=NO)
+    table.column("#0", width=0, minwidth=0)
     table.column("packet_id",anchor=CENTER, width=80)
     table.column("packet_time",anchor=CENTER,width=80)
     table.column("packet_source",anchor=CENTER,width=80)
@@ -228,5 +260,11 @@ if __name__ == '__main__':
 
     # map_button = ctk.CTkButton(under_frame, text="Open Map")
     # map_button.pack(pady=10)
+
+    # Create a thread object for the function
+    thread = threading.Thread(target=run_client)
+
+    # Start the thread
+    thread.start()
 
     root.mainloop()

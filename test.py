@@ -229,7 +229,7 @@ if __name__ == '__main__':
     y_scroll.config(command=table.yview)
     x_scroll.config(command=table.xview)
 
-    table = ttk.Treeview(output_frame)
+    # table = ttk.Treeview(output_frame)
     table['columns'] = ('packet_id', 'packet_time', 'packet_source', 'packet_destination', 'packet_protocol', 'packet_length','packet_info')
 
     table.column("#0", width=0, minwidth=25)
