@@ -15,7 +15,7 @@ import socket
 
 was_stopped = False
 
-list = []
+packet_list = []
 
 class Sniffer:
     def __init__(self, output_box):
@@ -93,7 +93,7 @@ def add_packet(packet):
 
     global packet_number, start_time, execution_time, was_stopped
     end_time = datetime.now()
-    list.append(packet)
+    packet_list.append(packet)
 
     if was_stopped:
         time_diff_converted = 0.0
@@ -118,8 +118,10 @@ def add_packet(packet):
 
     if (values):
         # Send packet values to server
-        serialized_data = pickle.dumps(values)
-        client_socket.sendall(serialized_data)
+        serialized_values = pickle.dumps(values)
+        # serialized_packet_list = pickle.dumps(packet_list)
+        client_socket.sendall(serialized_values)
+        # client_socket.sendall(serialized_packet_list)
         
         table.insert('',0,iid=packet_number,text='', values=values)
 
@@ -129,9 +131,9 @@ def add_packet(packet):
 def on_treeview_doubleclick(event):
     selected_item = table.focus()
     packet_id = table.item(selected_item)["values"][0]
-    global x
-    x = list[packet_id-1]
-    packet_info = str(x.show(dump=True))
+    global packet, packet_info
+    packet = packet_list[packet_id-1]
+    packet_info = str(packet.show(dump=True))
     tk.messagebox.showinfo(f"Packet Info (ID: {packet_id})", packet_info)
     
 ctk.set_appearance_mode("dark")
@@ -150,7 +152,7 @@ def run_client():
     print('Connected to server:', host, port)
 
     while True:
-        # Send data to the server
+    # Send data to the server
         message = input("Enter a message (or 'quit' to exit): ")
         client_socket.send(message.encode('utf-8'))
 
@@ -222,25 +224,25 @@ if __name__ == '__main__':
     # x_scroll.config(command=table.xview)
 
     table = ttk.Treeview(output_frame)
-    table['columns'] = ('packet_id', 'packet_time', 'packet_source', 'packet_destination', 'packet_protocol', 'packet_length','packet_info')
+    table['columns'] = ('packet_id', 'packet_time', 'packet_src', 'packet_dst', 'packet_protocol', 'packet_length','packet_info')
 
     table.column("#0", width=0, minwidth=0)
     table.column("packet_id",anchor=CENTER, width=80)
     table.column("packet_time",anchor=CENTER,width=80)
-    table.column("packet_source",anchor=CENTER,width=80)
-    table.column("packet_destination",anchor=CENTER,width=80)
+    table.column("packet_src",anchor=CENTER,width=80)
+    table.column("packet_dst",anchor=CENTER,width=80)
     table.column("packet_protocol",anchor=CENTER,width=80)
     table.column("packet_length",anchor=CENTER,width=80)
     table.column("packet_info",anchor=CENTER,width=80)
 
     table.heading("#0",text="",anchor=CENTER)
-    table.heading("packet_id",text="Id",anchor=CENTER)
+    table.heading("packet_id",text="ID",anchor=CENTER)
     table.heading("packet_time",text="Time",anchor=CENTER)
-    table.heading("packet_source",text="Source",anchor=CENTER)
-    table.heading("packet_destination",text="Destination",anchor=CENTER)
+    table.heading("packet_src",text="Source",anchor=CENTER)
+    table.heading("packet_dst",text="Destination",anchor=CENTER)
     table.heading("packet_protocol",text="Protocol",anchor=CENTER)
     table.heading("packet_length",text="Length",anchor=CENTER)
-    table.heading("packet_info",text="Packet",anchor=CENTER)
+    table.heading("packet_info",text="Info",anchor=CENTER)
 
     table.pack()
     table.bind("<Double-Button-1>", on_treeview_doubleclick)

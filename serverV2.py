@@ -20,25 +20,36 @@ def run_server():
 
     # Listen for incoming connections
     server_socket.listen(1)
-    print('Server listening on {}:{}'.format(host, port))
+    print('[!] Server listening on {}:{}'.format(host, port))
     header = "Waiting for client..."
 
     # Accept a client connection
+    global client_address
     client_socket, client_address = server_socket.accept()
     print('Connected to client:', client_address)
     clear_window()
     
     while True:
         # Receive data from the client
+        # global packet_list, client_packets
+        # packet_list = []
+        # client_packets = ()
         data = client_socket.recv(1024)
         if not data:
             break
 
-        # Display the received message
-        received_tuple = pickle.loads(data)
-        if received_tuple[0]:
-            # table.insert(parent='',index='end',iid=received_tuple[0],text='', values=received_tuple)
-            table.insert('',0,iid=received_tuple[0],text='', values=received_tuple)
+        # # Deserialize the received data using pickle
+        # received_object = pickle.loads(data)
+        # # Distinguish between tuples and lists
+        # if isinstance(received_object, tuple):
+        #     client_packets += (received_object,)
+        # elif isinstance(received_object, list):
+        #     packet_list += received_object
+
+        client_packets = pickle.loads(data)
+        if client_packets[0]:
+            # table.insert(parent='',index='end',iid=client_packets[0],text='', values=client_packets)
+            table.insert('',0,iid=client_packets[0],text='', values=client_packets)
 
     # Close the connection
     client_socket.close()
@@ -49,8 +60,8 @@ win_h = "500"
 
 def animate_header():
     global header
-    header_label.config(text=header)
-    header_label.after(300, animate_header)
+    header_label.configure(text=header)
+    header_label.after(400, animate_header)
 
     dots = header[-3:]
     if dots == "...":
@@ -58,59 +69,70 @@ def animate_header():
     else:
         header += "."
 
+# def on_treeview_doubleclick(event):
+#     selected_item = table.focus()
+#     packet_id = table.item(selected_item)["values"][0]
+#     global packet, packet_info
+#     packet = packet_list[packet_id-1]
+#     packet_info = str(packet.show(dump=True))
+#     tk.messagebox.showinfo(f"Packet Info (ID: {packet_id})", packet_info) 
+
 def clear_window():
     header_label.destroy()
-    # button.destroy()
 
     create_table()
 
 def create_table():
-    global input_label, input_entry, add_button, table
+    global table
 
-    column_width = 80
-    # total_width = len(treeview["columns"]) * column_width
-    total_width = 7 * column_width
+    upper_frame = ctk.CTkFrame(window)
+    upper_frame.pack(pady=20)
+
+    header_labels = ["USERNAME:", f"IP: {client_address[0]}", f"PORT: {client_address[1]}"]
+    bold_font = ("Arial", 12, "bold")
+
+    for idx, label_text in enumerate(header_labels):
+        header_label = ctk.CTkLabel(upper_frame, text=label_text, font=bold_font)
+        header_label.grid(row=0, column=idx, padx=10, pady=10)
 
     table_frame = ctk.CTkFrame(window, corner_radius=10)
     table_frame.place(relx=0.5, rely=0.5, anchor="center")
 
     table = ttk.Treeview(table_frame)
 
-    table['columns'] = ('packet_id', 'pack_time', 'pack_src', 'pack_dst', 'pack_protocol','pack_len', 'pack_content')
+    table['columns'] = ('packet_id', 'packet_time', 'packet_src', 'packet_dst', 'packet_protocol','packet_length', 'packet_info')
 
     table.column("#0", width=0, minwidth=0)
     # table.column("client_id",anchor=CENTER, width=80, minwidth=60)
     # table.column("client_name",anchor=CENTER,width=80, minwidth=60)
     table.column("packet_id",anchor=CENTER,width=80, minwidth=60)
-    table.column("pack_time",anchor=CENTER,width=80, minwidth=60)
-    table.column("pack_src",anchor=CENTER,width=80, minwidth=60)
-    table.column("pack_dst",anchor=CENTER,width=80, minwidth=60)
-    table.column("pack_protocol",anchor=CENTER,width=80, minwidth=60)
-    table.column("pack_len",anchor=CENTER,width=80, minwidth=60)
-    table.column("pack_content",anchor=CENTER,width=80, minwidth=60)
+    table.column("packet_time",anchor=CENTER,width=80, minwidth=60)
+    table.column("packet_src",anchor=CENTER,width=80, minwidth=60)
+    table.column("packet_dst",anchor=CENTER,width=80, minwidth=60)
+    table.column("packet_protocol",anchor=CENTER,width=80, minwidth=60)
+    table.column("packet_length",anchor=CENTER,width=80, minwidth=60)
+    table.column("packet_info",anchor=CENTER,width=80, minwidth=60)
 
     table.heading("#0",text="",anchor=CENTER)
     # table.heading("client_id",text="Client ID",anchor=CENTER)
     # table.heading("client_name",text="Client Name",anchor=CENTER)
-    table.heading("packet_id",text="Pack ID",anchor=CENTER)
-    table.heading("pack_time",text="Pack Time",anchor=CENTER)
-    table.heading("pack_src",text="Pack SRC",anchor=CENTER)
-    table.heading("pack_dst",text="Pack DST",anchor=CENTER)
-    table.heading("pack_protocol",text="Pack Protocol",anchor=CENTER)
-    table.heading("pack_len",text="Pack Len",anchor=CENTER)
-    table.heading("pack_content",text="Pack Content",anchor=CENTER)
+    table.heading("packet_id",text="ID",anchor=CENTER)
+    table.heading("packet_time",text="Time",anchor=CENTER)
+    table.heading("packet_src",text="Source",anchor=CENTER)
+    table.heading("packet_dst",text="Destination",anchor=CENTER)
+    table.heading("packet_protocol",text="Protocol",anchor=CENTER)
+    table.heading("packet_length",text="Length",anchor=CENTER)
+    table.heading("packet_info",text="Info",anchor=CENTER)
 
     table.pack()
+    # table.bind("<Double-Button-1>", on_treeview_doubleclick)
 
-def add_to_table():
-    text = input_entry.get()
-    treeview.insert(tk.END, text)
-    input_entry.delete(0, tk.END)
 
-window = tk.Tk()
+window = ctk.CTk()
 window.title("Server Sniffer")
+window.iconbitmap(r"Images\nose.ico")
 window.geometry(win_w+"x"+win_h)
-window.configure(background="black")
+window.configure(bg="gray")
 
 style = ttk.Style()
 style.theme_use("default")
@@ -132,7 +154,7 @@ style.map("Treeview.Heading",
 
 header = "Starting Server..."
 
-header_label = tk.Label(window, text=header, fg="white", bg="black", font=("Arial", 16, "bold"))
+header_label = ctk.CTkLabel(window, text=header, font=("Arial", 20, "bold"))
 header_label.place(relx=0.5, rely=0.5, anchor="center")
 
 animate_header()
@@ -142,8 +164,5 @@ thread = threading.Thread(target=run_server)
 
 # Start the thread
 thread.start()
-
-# button = tk.Button(window, text="Create Table", command=clear_window)
-# button.place(relx=0.5, rely=0.6, anchor="center")
 
 window.mainloop()
