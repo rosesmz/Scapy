@@ -13,6 +13,7 @@ from datetime import datetime
 import pickle
 import socket
 
+
 was_stopped = False
 
 packet_list = []
@@ -25,13 +26,12 @@ class Sniffer:
     
     def setup_sniffer(self):
         protocols = ['tcp','udp','http','icmp','arp','dns']
-        filter = getinput().lower()
+        filter = get_input().lower()
         if filter == 'http':
             self.sniffer = AsyncSniffer(filter='tcp port 80', prn=add_packet)
         elif filter == 'dns':
             self.sniffer = AsyncSniffer(filter='tcp port 53 or udp port 53', prn=add_packet)
         elif filter == '':
-            tk.messagebox.showinfo("Alert", "No filter was specified!\nRunning all protocols.")
             self.sniffer = AsyncSniffer(filter='', prn=add_packet)
         elif filter.startswith("src") or filter.startswith("dst"):
             input = filter.split(":")
@@ -58,7 +58,6 @@ class Sniffer:
                 was_stopped = True
                 self.sniffer.stop()
                 self.is_running = False
-
 
 def start_sniffing():
     main_sniffer.setup_sniffer()
@@ -103,11 +102,12 @@ def add_packet(packet):
         time_diff_converted = time_diff.total_seconds()
     execution_time += time_diff_converted
 
+
     values = ()
     try:
         if HTTPRequest in packet or HTTPResponse in packet:
             values=(packet_number, round(execution_time, 6), packet[IP].src, packet[IP].dst, 'HTTP', len(packet), packet.summary())
-        elif DNS in packet:
+        elif IP and DNS in packet:
             values=(packet_number, round(execution_time, 6), packet[IP].src, packet[IP].dst, 'DNS', len(packet), packet.summary())
         elif ARP in packet:
             values=(packet_number, round(execution_time, 6), packet[ARP].hwsrc, packet[ARP].hwdst, 'ARP', len(packet), packet.summary())     
@@ -119,10 +119,7 @@ def add_packet(packet):
     if (values):
         # Send packet values to server
         serialized_values = pickle.dumps(values)
-        # serialized_packet_list = pickle.dumps(packet_list)
-        client_socket.sendall(serialized_values)
-        # client_socket.sendall(serialized_packet_list)
-        
+        client_socket.sendall(serialized_values)       
         table.insert('',0,iid=packet_number,text='', values=values)
 
     packet_number +=1
@@ -140,33 +137,72 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 def run_client():
+    global host, port
     host = 'localhost'
     port = 12345
 
     global client_socket
     # Create a socket object
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    create_username_ui()
 
-    # Connect to the server
-    client_socket.connect((host, port))
-    print('Connected to server:', host, port)
 
-    while True:
-    # Send data to the server
-        message = input("Enter a message (or 'quit' to exit): ")
-        client_socket.send(message.encode('utf-8'))
+def clear_window(window):
+    window.destroy()
 
-        if message == 'quit':
-            break
+    create_gui()
 
-    # Close the connection
+def create_username_ui():
+    def connect(input_entry):
+            username = input_entry.get()
+            if username.strip() == '':
+                tk.messagebox.showerror("Error", "No username was entered!")
+            else:
+                # Connect to the server
+                client_socket.connect((host, port))
+                print('[+] Connected to server:', host, port)
+                client_socket.send(('Username:' + username).encode())
+                destroy = lambda: clear_window(window)
+                destroy()
+
+    window = ctk.CTk()
+    window.title("Packet Sniffer")
+    window.iconbitmap(r"Images\nose.ico")
+    window.geometry("500x500")
+
+    header_label = ctk.CTkLabel(window, text="Enter username:", font=("Assistant", 20, "bold"))
+    header_label.place(relx=0.5, rely=0.38, anchor="center")
+
+    input_entry = ctk.CTkEntry(window, font=("Assistant", 20))
+    input_entry.place(relx=0.5, rely=0.45, anchor="center")
+
+    connect_button = ctk.CTkButton(window, text="Connect", command= lambda: connect(input_entry), font=("Assistant", 20))
+    connect_button.place(relx=0.5, rely=0.53, anchor="center")
+
+    window.mainloop()
+
+
+def on_closing():
+    # Close the socket connection
     client_socket.close()
+    print("[-] Disconnected.")
 
-if __name__ == '__main__':
+    # Destroy the GUI window
+    root.destroy()
+
+def get_input():
+    global filter_input
+    filter = filter_input.get()
+    return filter
+
+
+def create_gui():
+    global root
     root = ctk.CTk()
     root.title("Packet Sniffer")
     root.iconbitmap(r"Images\nose.ico")
-    root.geometry("750x550")
+    root.geometry("700x500")
+    root.protocol("WM_DELETE_WINDOW", on_closing)
 
     style = ttk.Style()
     style.theme_use("default")
@@ -177,7 +213,7 @@ if __name__ == '__main__':
                     fieldbackground="#2c2c2c",
                     bordercolor="#343638",
                     borderwidth=0)
-    
+
     style.map('Treeview', background=[('selected', '#22559b')])
     style.configure("Treeview.Heading",
                 background="#565b5e",
@@ -189,15 +225,12 @@ if __name__ == '__main__':
     start_img = ctk.CTkImage(light_image=Image.open(r"Images\play.png"), size=(20,20))
     stop_img = ctk.CTkImage(light_image=Image.open(r"Images\stop.png"), size=(20,20))
 
-    def getinput():
-        global filter_input
-        filter = filter_input.get()
-        return filter
 
     upper_frame = ctk.CTkFrame(root, corner_radius=10)
     upper_frame.pack(pady=20)
 
-    filter_input = ctk.CTkEntry(upper_frame, width=500, height=40, border_width=1, placeholder_text="Enter filter to apply...", text_color="silver")
+    global filter_input
+    filter_input = ctk.CTkEntry(upper_frame, width=500, height=40, border_width=1, placeholder_text="Enter filter to apply...", text_color="silver", font=("Assistant", 20))
     filter_input.grid(row=0, column=0,padx=10,pady=10)
 
     start_button = ctk.CTkButton(upper_frame, image=start_img, text="", command=start_sniffing, width=20, height=35, fg_color="#212121", hover_color="#1c1c1c")
@@ -206,22 +239,11 @@ if __name__ == '__main__':
     stop_button = ctk.CTkButton(upper_frame, image=stop_img, text="", command=stop_sniffing, width=20, height=35, fg_color="#212121", hover_color="#1c1c1c")
     stop_button.grid(row=0, column=2, padx=5)
 
-    output_frame = ctk.CTkFrame(root, corner_radius=10)
+    output_frame = ctk.CTkFrame(root, width=500, corner_radius=10)
     output_frame.pack(pady=10)
-    
-    # def create_table():
+
     global table
-
-    # y_scroll = Scrollbar(output_frame)
-    # y_scroll.pack(side=RIGHT, fill=Y)
-
-    # x_scroll = Scrollbar(output_frame, orient='horizontal')
-    # x_scroll.pack(side= BOTTOM,fill=X)
-
     table = ttk.Treeview(output_frame)
- 
-    # y_scroll.config(command=table.yview)
-    # x_scroll.config(command=table.xview)
 
     table = ttk.Treeview(output_frame)
     table['columns'] = ('packet_id', 'packet_time', 'packet_src', 'packet_dst', 'packet_protocol', 'packet_length','packet_info')
@@ -247,26 +269,13 @@ if __name__ == '__main__':
     table.pack()
     table.bind("<Double-Button-1>", on_treeview_doubleclick)
 
-    # output = Text(output_frame, height=20, width=85, wrap=WORD, bd=0, bg="#2c2c2c", fg="silver", font=("Arial", 10))
-    # output.pack(padx=10, pady=10)
-
+    global main_sniffer
     main_sniffer = Sniffer(output_box=output_frame)
 
-    # under_frame = ctk.CTkFrame(root, corner_radius=10)
-    # under_frame.pack(pady=10)
-
-    # interfaces_list = show_interfaces()
-    # interfaces = ctk.CTkOptionMenu(under_frame, values=["Option 1", "Option 2", "Option 3"])
-    # interfaces.pack(padx=10, pady=10)
-    # interfaces.set("Choose an interface")
-
-    # map_button = ctk.CTkButton(under_frame, text="Open Map")
-    # map_button.pack(pady=10)
-
-    # Create a thread object for the function
-    thread = threading.Thread(target=run_client)
-
-    # Start the thread
-    thread.start()
-
     root.mainloop()
+
+# Create a thread object for the function
+thread = threading.Thread(target=run_client)
+
+# Start the thread
+thread.start()
