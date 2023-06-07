@@ -152,15 +152,39 @@ def clear_window(window):
 
     create_gui()
 
+def test_ip_address(ip_address):
+    try:
+        # Create a socket object
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(2)  # Set a timeout value of 2 seconds
+
+        # Attempt to connect to the IP address on port 80
+        result = sock.connect_ex((ip_address, 80))
+
+        # Check if the connection was successful
+        if result == 0:
+            return True
+        else:
+            return False
+
+        sock.close()  # Close the socket
+
+    except socket.error as e:
+        print(f"An error occurred while testing the IP address: {str(e)}")
+
 def create_username_ui():
-    def connect(input_entry):
-            username = input_entry.get()
-            if username.strip() == '':
-                tk.messagebox.showerror("Error", "No username was entered!")
+    def connect(username_entry,ip_entry,port_entry):
+            username = username_entry.get()
+            server_ip = ip_entry.get()
+            server_port = int(port_entry.get())
+            if username.strip() == '' or server_ip.strip() == '':
+                tk.messagebox.showerror("Error", "Not all fields were filled!") 
+            elif not test_ip_address and not server_port.isdigit():
+                tk.messagebox.showerror("Error", "Invalid input!") 
             else:
                 # Connect to the server
-                client_socket.connect((host, port))
-                print('[+] Connected to server:', host, port)
+                client_socket.connect((server_ip, server_port))
+                print('[+] Connected to server:', server_ip, server_port)
                 client_socket.send(('Username:' + username).encode())
                 destroy = lambda: clear_window(window)
                 destroy()
@@ -170,14 +194,26 @@ def create_username_ui():
     window.iconbitmap(r"Images\nose.ico")
     window.geometry("500x500")
 
-    header_label = ctk.CTkLabel(window, text="Enter username:", font=("Assistant", 20, "bold"))
-    header_label.place(relx=0.5, rely=0.38, anchor="center")
+    username_label = ctk.CTkLabel(window, text="Enter username:", font=("Assistant", 20, "bold"))
+    username_label.place(relx=0.5, rely=0.2, anchor="center")
 
-    input_entry = ctk.CTkEntry(window, font=("Assistant", 20))
-    input_entry.place(relx=0.5, rely=0.45, anchor="center")
+    username_entry = ctk.CTkEntry(window, font=("Assistant", 20))
+    username_entry.place(relx=0.5, rely=0.26, anchor="center")
 
-    connect_button = ctk.CTkButton(window, text="Connect", command= lambda: connect(input_entry), font=("Assistant", 20))
-    connect_button.place(relx=0.5, rely=0.53, anchor="center")
+    ip_header = ctk.CTkLabel(window, text="Server IP:", font=("Assistant", 20, "bold"))
+    ip_header.place(relx=0.5, rely=0.32, anchor="center")
+
+    ip_entry = ctk.CTkEntry(window, font=("Assistant", 20))
+    ip_entry.place(relx=0.5, rely=0.38, anchor="center")
+
+    port_entry = ctk.CTkLabel(window, text="Server PORT:", font=("Assistant", 20, "bold"))
+    port_entry.place(relx=0.5, rely=0.44, anchor="center")
+
+    port_entry = ctk.CTkEntry(window, font=("Assistant", 20))
+    port_entry.place(relx=0.5, rely=0.5, anchor="center")
+
+    connect_button = ctk.CTkButton(window, text="Connect", command= lambda: connect(username_entry,ip_entry,port_entry), font=("Assistant", 20))
+    connect_button.place(relx=0.5, rely=0.58, anchor="center")
 
     window.mainloop()
 

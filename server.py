@@ -51,14 +51,14 @@ def run_server():
     global header
     global username
     username = ''
-    host = 'localhost'
-    port = 12345
+    host = socket.gethostname()
+    port = 8000
 
     # Create a socket object
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     # Bind the socket to a specific address and port
-    server_socket.bind((host, port))
+    server_socket.bind(('', port))
 
     # Listen for incoming connections
     server_socket.listen(1)
